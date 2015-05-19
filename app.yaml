@@ -1,0 +1,13 @@
+application: abstract-flame-92723
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: true
+
+handlers:
+- url: /.*
+  script: Shop.app
+
+libraries:
+- name: jinja2
+  version: latest
