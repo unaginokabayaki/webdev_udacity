@@ -1,0 +1,52 @@
+<!doctype html>
+
+<html>
+    <head>
+        <title>My blog</title>
+    </head>
+    <style type="text/css">
+        body {
+            margin: 10; 
+            text-align: center;
+        }
+
+        div#wrapper {
+            width: 800px;
+            text-align: left;
+            margin: 0 auto;
+        }
+
+        textarea#article {
+            width: 400px;
+            height: 200px;
+        }
+
+        input#subject {
+            width: 400px;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .subject {
+            height: 20px;
+            border-bottom: solid 1px;
+            font-weight: bold;
+        }
+
+    </style>
+    <body style="">
+        <h1 style="height: 50px">
+            My blog
+        </h1>
+
+        <div id="wrapper">
+        
+            {% block content %}
+            {% endblock %}
+
+        </div>
+
+    </body>
+</html>

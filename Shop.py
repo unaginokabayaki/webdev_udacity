@@ -1,6 +1,7 @@
 import webapp2
 import jinja2
 import os
+import time
 
 from google.appengine.ext import db
 
@@ -106,8 +107,56 @@ class Art(db.Model):
     art = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
 
+def blog_key(name = 'default'):
+    return db.key.from_path('blogs', name)
+
+class Post(db.Model):
+    subject = db.StringProperty(required = True)
+    article = db.TextProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+
+    def render(self):
+        self._render_text = self.content.replace('/n','<br>')
+        return render_str("blog_post.html", p=self)
+
+class Blogfront(Handler):
+    def render_front(self):
+        posts = db.GqlQuery("SELECT * FROM Post ORDER BY created DESC")
+        #posts = Post.all().order('-created')
+        self.render("blog_front.html", posts=posts)
+
+    def get(self):
+        self.render_front()
+
+    def post(self):
+        pass
+
+class Blogpost(Handler):
+    def render_post(self, error="", subject="", article=""):
+        self.render("blog_post.html", error=error, subject=subject, article=article)
+
+    def get(self):
+        self.render_post()
+
+    def post(self):
+        subject = self.request.get("subject")
+        article = self.request.get("article")
+
+        if subject and article :
+            data = Post(subject=subject, article=article)
+            data.put()
+
+            time.sleep(1)
+            self.redirect("/blog")
+        else :
+            error = "subject and article are both required."
+            self.render_post(error, subject, article)
+
+
 app = webapp2.WSGIApplication([
     ('/', MainPage), 
     ('/FizzBuzz', FizzBuzz),
     ('/Ascii', Ascii),
+    ('/blog', Blogfront),
+    ('/blog/newpost', Blogpost),
 ], debug=True)
