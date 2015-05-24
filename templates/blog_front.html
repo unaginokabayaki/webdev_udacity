@@ -1,15 +1,14 @@
 {% extends "blog_base.html" %}
 
 {% block content %}
-<h2>Front</h2>
+<h2>Post whatever you want.</h2>
+<div class="newpost">
+    <a href="/blog/newpost" class="newpost-link">New Post</a>
+</div>
 <div>
     {% for post in posts %}
-        <div class="subject">
-            <span class="subject">{{post.subject}}</span>
-            <span style="margin 0px auto;">{{post.created}}</span>
-        </div>
-        <div class="article">{{post.article}}</div>
-        <br>
+        {# ここではblog_post.htmlの内容をそのまま表示したいのでsafeしておく #}
+        {{ post.render() | safe }}
     {% endfor %}
 </div>
 {% endblock %}

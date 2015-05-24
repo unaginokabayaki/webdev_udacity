@@ -5,6 +5,7 @@
         <title>My blog</title>
     </head>
     <style type="text/css">
+        /*CSSをコメントにしても丸見え*/
         body {
             margin: 10; 
             text-align: center;
@@ -29,17 +30,60 @@
             color: red;
         }
 
+        /*ヘッダの中にタイトルと日付を入れる
+        relativeの中のabsoluteはrelativeが基準になる*/
+        .heading {
+            height: 25px;
+            border-bottom: solid 3px;
+            font-weight: bold;
+            position: relative;
+            border: solid 1px;
+        }
+
         .subject {
-            height: 20px;
-            border-bottom: solid 1px;
+            font-size: 24px;
+        }
+
+        .article {
+            margin: 5px;
+        }
+
+        .created {
+             position: absolute; 
+             right: 0px;
+             bottom: 0px;
+             color: #666;
+        }
+
+        .main-title {
+            font-size: 40px;
+            font-weight: bold;
+            color: black;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 30px;
+        }
+
+        .newpost {
+            height: 30px;
+            margin-bottom: 30px;
+            text-align; right;
+            position: relative;
+        }
+
+        .newpost-link {
+            right: 0px;
+            position: absolute;
+            text-decoration: none;
+            border: solid 1px;
+            color: blue;
+            padding: 5px;
             font-weight: bold;
         }
 
     </style>
     <body style="">
-        <h1 style="height: 50px">
-            My blog
-        </h1>
+        <a href="/blog" class="main-title">My blog</a>
 
         <div id="wrapper">
         

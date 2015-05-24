@@ -1,8 +1,10 @@
 {% extends "blog_base.html" %}
+{#}
+parma link のページです。
+Post をひとつだけ表示します。
+ここではblog_post.htmlの内容をそのまま表示したいのでsafeしておく 
+#}
 
 {% block content %}
-<h2>perma link</h2>
-<div>
-    
-</div>
+{{ post.render() | safe }}
 {% endblock %}
