@@ -1,0 +1,76 @@
+<!doctype html>
+
+<html>
+<head>
+    <title>Sign Up</title>
+    <style type="text/css">
+        table {
+            border: solid 1px;
+            border-spacing: 5px;
+            table-layout: auto;
+        }
+
+        td {
+            /*border: solid 1px;*/
+        }
+
+        input[type="text"]{
+            
+        }
+
+        .label {
+            width: 150px;
+            text-align: right;
+        }
+
+        .box {
+            width: 400px;
+        }
+
+        .error {
+            margin-left: 5px;
+            color: red;"
+        }
+
+        .submit {
+            width: 100px;
+            height: 30px;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Sign Up</h1>
+    <form method="post">
+        <table>
+            <tr>
+                <td class="label">Username</td>
+                <td class="box">
+                    <input type="text" name="username" value="{{username}}">
+                    <span class="error">{{error_username}}</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="label">Password</td>
+                <td>
+                    <input type="password" name="password">
+                    <span class="error">{{error_password}}</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="label">Verify Password</td>
+                <td>
+                    <input type="password" name="verify">
+                    <span class="error">{{error_verify}}</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="label" name="email">Email(Optional)</td>
+                <td><input type="text" name="email" value="{{email}}"></td>
+            </tr>
+        </table>
+        <br>
+        <input type="submit" value="登録" class="submit">
+    </form>
+</body>
+</html>

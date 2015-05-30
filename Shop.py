@@ -2,7 +2,10 @@ import webapp2
 import jinja2
 import os
 import time
-
+import hashlib
+import hmac
+import random
+import string
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
@@ -171,6 +174,104 @@ class Blogperma(Handler):
 
         self.render("blog_perma.html", post=post)
 
+SECRET = "secret"
+
+def hash_str(s):
+    return hmac.new(SECRET, s).hexdigest()
+
+def make_secure_val(s):
+    return "%s|%s" % (s, hash_str(s))
+
+def check_secure_val(h):
+    val = h.split('|')[0]
+    if h == make_secure_val(val):
+        return val
+
+def make_salt():
+    n = 5
+    return ''.join(random.choice(string.ascii_letters) for i in range(n))
+
+
+def make_pw_hash(name, pw, salt = None):
+    if not salt :
+        salt = make_salt()
+    h = hashlib.sha256(name + pw + salt).hexdigest()
+    return '%s,%s' % (h, salt)
+
+def valid_pw(name, pw, h):
+    salt = h.split(',')[1]
+    if h == make_pw_hash(name, pw, salt) :
+        return True
+
+
+class CookieHandler(Handler):
+    def get(self):
+        self.response.headers['Content-Type'] = 'text/plain'
+        visits = 0
+        #get a number + hash as string
+        visits_cookie_val = self.request.cookies.get('visits')
+        if visits_cookie_val :
+            cookie_val = check_secure_val(visits_cookie_val)
+            #returns a number unless falsified
+            if cookie_val :
+                visits = int(cookie_val)
+
+        visits += 1
+
+        new_cookie_val = make_secure_val(str(visits))
+
+        self.response.headers.add_header('Set-Cookie', 'visits=%s' % new_cookie_val)
+
+        # #make sure visits is an int
+        # if visits.isdigit() :
+        #     visits = int(visits) + 1
+        # else :
+        #     visits = 0
+
+        # self.response.headers.add_header('Set-Cookie', 'visits=%s' % visits)
+
+
+        if visits > 100 :
+            self.write("you are the best ever!")
+        else :
+            self.write("You have visit this site %s times!" % visits)
+
+class SignupHandler(Handler):
+    def render_page(self, username="", email="", error_username="", error_password="", error_verify=""):
+        self.render('Signup.html', username=username, email=email, 
+            error_username=error_username, error_password=error_password, error_verify=error_verify)
+
+    def get(self):
+        self.render_page()
+
+    def post(self):
+        username = self.request.get("username")
+        password = self.request.get("password")
+        verify = self.request.get("verify")
+        email = self.request.get("email")
+
+        if not username :
+            error_username = "You need to put your username"
+            self.render_page(username, email, error_username=error_username)
+
+        elif not password :
+            error_password = "You need to put your password"
+            self.render_page(username, email, error_password=error_password)
+
+        elif password != verify :
+            error_verify = "Your password didn't match."
+            self.render_page(username, email, error_verify=error_verify)
+
+        else :
+            self.response.headers.add_header('Set-Cookie', 'username=%s' % str(username))
+            self.redirect("/welcome")
+
+class Welcome(Handler):
+    def get(self):
+        self.response.headers['Content-Type'] = 'text/plain'
+        username = self.request.cookies.get("username")
+        self.write("Welcome, %s" % username)
+
 app = webapp2.WSGIApplication([
     ('/', MainPage), 
     ('/FizzBuzz', FizzBuzz),
@@ -178,4 +279,7 @@ app = webapp2.WSGIApplication([
     ('/blog/?', Blogfront),
     ('/blog/newpost', Blogpost),
     ('/blog/([0-9]+)', Blogperma),
+    ('/cookie', CookieHandler),
+    ('/signup', SignupHandler),
+    ('/welcome', Welcome),
 ], debug=True)
