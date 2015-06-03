@@ -1,0 +1,65 @@
+<!doctype html>
+
+<html>
+<head>
+    <title>Login</title>
+    <style type="text/css">
+        table {
+            border: solid 1px;
+            border-spacing: 5px;
+            table-layout: auto;
+        }
+
+        td {
+            /*border: solid 1px;*/
+        }
+
+        input[type="text"]{
+            
+        }
+
+        .label {
+            width: 150px;
+            text-align: right;
+        }
+
+        .box {
+            width: 400px;
+        }
+
+        .error {
+            margin-top: 5px;
+            margin-left: 5px;
+            color: red;"
+        }
+
+        .submit {
+            width: 100px;
+            height: 30px;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Login</h1>
+    <form method="post">
+        <table>
+            <tr>
+                <td class="label">Username</td>
+                <td class="box">
+                    <input type="text" name="username" value="{{username}}">
+                </td>
+            </tr>
+            <tr>
+                <td class="label">Password</td>
+                <td>
+                    <input type="password" name="password">
+                </td>
+            </tr>
+        </table>
+        <div class="error">{{error}}</div>
+        <br>
+        <input type="submit" value="ログイン" class="submit">
+    </form>
+</body>
+</html>
