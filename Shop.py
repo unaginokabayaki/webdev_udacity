@@ -7,6 +7,8 @@ import hmac
 import random
 import string
 from google.appengine.ext import db
+import urllib2
+from xml.dom import minidom
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
@@ -58,13 +60,66 @@ class FizzBuzz(Handler):
 
         self.render("fizzbuzz.html", n = n)
 
+IP_URL = "http://api.hostip.info/?ip="
+def get_coords(ip):
+    url = IP_URL + ip
+    content = None
+    try:
+        content = urllib2.urlopen(url).read()
+    except URLError:
+        return
+
+    if content :
+        #parse the xml and find the coordinate
+        lanlat = get_coodes_xml(content)
+        if lanlat :
+            return db.GeoPt(lanlat[1], lanlat[0])
+
+def get_coodes_xml(xml):
+    d = minidom.parseString(xml)
+    coords = d.getElementsByTagName("gml:coordinates")
+    if coords and coords[0].childNodes[0].nodeValue:
+        return coords[0].childNodes[0].nodeValue.split(',')
+
+GMAPS_URL = "http://maps.googleapis.com/maps/api/staticmap?size=380x263&sensor=false&"
+
+#Point = namedtuple('Point', ["lat", "lon"])
+
+def gmaps_img(points):
+    markers = []
+    
+    for p in points:
+        markers.append("markers=%s,%s" % (p.lat, p.lon))
+        
+    return GMAPS_URL + "&".join(markers)
+
+        
 class Ascii(Handler):
     def render_front(self, title="", art="", error=""):
         arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC")
 
-        self.render("front.html", title = title, art = art, error = error, arts = arts)
+        #prevent the running of multiple query
+        arts = list(arts)
+
+        #find which arts have coords
+        points = filter(None, (a.coords for a in arts))
+
+        # points = []
+        # for a in points :
+        #     if arts.coords :
+        #         points.append(a.coords)
+
+        #if we have any arts coords, make an image url
+        img_url = None
+        if points :
+            img_url = gmaps_img(points)
+
+        self.render("front.html", title = title, art = art, error = error, arts = arts, img_url = img_url)
 
     def get(self):
+        self.write(get_coords(self.request.remote_addr))
+        #self.write(repr(get_coords("12.215.42.19")))
+        #self.write(repr(get_coords(self.request.remote_addr)))
         self.render_front()
 
     def post(self):
@@ -73,9 +128,15 @@ class Ascii(Handler):
 
         if title and art:
             a = Art(title=title, art=art)
+            #look up the user's coordinates from their ip
+            coords = get_coords(self.request.remote_addr)
+            #if we have coordinates, add them to the art
+            if coords :
+                a.coords = coords
+
             a.put() #store in the database
 
-            self.redirect("/Ascii")
+            self.redirect("/ascii")
             #self.write("thanks!")
         else:
             error = "we need both a title and some artwork!"
@@ -85,7 +146,7 @@ class Art(db.Model):
     title = db.StringProperty(required = True)
     art = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
-
+    coords = db.GeoPtProperty()
 
 
 def blog_key(name = 'default'):
@@ -370,7 +431,7 @@ class User(db.Model):
 app = webapp2.WSGIApplication([
     ('/', MainPage), 
     ('/FizzBuzz', FizzBuzz),
-    ('/Ascii', Ascii),
+    ('/ascii', Ascii),
     ('/blog/?', Blogfront),
     ('/blog/newpost', Blogpost),
     ('/blog/([0-9]+)', Blogperma),

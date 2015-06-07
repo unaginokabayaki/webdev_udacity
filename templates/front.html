@@ -11,6 +11,7 @@
             width: 800px;
             margin: 0 auto;
             padding: 10px;
+            position: relative;
         }
 
         .error {
@@ -58,6 +59,12 @@
             font-size: 17px;
         }
 
+        .map {
+            position: absolute;
+            right: 0px;
+            top: 112px;
+        }
+
     </style>
 
     <body style="margin:0">
@@ -75,8 +82,13 @@
 
             <div class="error">{{error}}</div>
 
+            <br>
             <input type="submit">
         </form>
+
+        {% if img_url %}
+            <img class="map" src="{{img_url}}">
+        {% endif %}
 
         <hr>
 
