@@ -9,6 +9,8 @@ import string
 from google.appengine.ext import db
 import urllib2
 from xml.dom import minidom
+import logging
+from google.appengine.api import memcache
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
@@ -93,13 +95,33 @@ def gmaps_img(points):
         
     return GMAPS_URL + "&".join(markers)
 
-        
-class Ascii(Handler):
-    def render_front(self, title="", art="", error=""):
-        arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC")
+#CACHE = {}
+def top_arts(update = False):
+    key = 'top'
+    arts = memcache.get(key)
+    if arts is None or update:
+        logging.error("DB QUERY")
+        arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC LIMIT 10")
 
         #prevent the running of multiple query
         arts = list(arts)
+        memcache.set(key, arts)
+
+    # if key in CACHE:
+    #     arts = CACHE[key]
+    # else:
+    #     logging.error("DB QUERY")
+    #     arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC LIMIT 10")
+
+    #     #prevent the running of multiple query
+    #     arts = list(arts)
+    #     CACHE[key] = arts
+
+    return arts
+        
+class Ascii(Handler):
+    def render_front(self, title="", art="", error=""):
+        arts = top_arts()
 
         #find which arts have coords
         points = filter(None, (a.coords for a in arts))
@@ -135,6 +157,8 @@ class Ascii(Handler):
                 a.coords = coords
 
             a.put() #store in the database
+            #CACHE.clear()
+            top_arts(True)
 
             self.redirect("/ascii")
             #self.write("thanks!")
