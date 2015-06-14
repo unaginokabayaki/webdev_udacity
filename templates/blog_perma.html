@@ -7,4 +7,7 @@ Post をひとつだけ表示します。
 
 {% block content %}
 {{ post.render() | safe }}
+<div class="age">
+    <label class="age-time">{{age}}</label>
+</div>
 {% endblock %}

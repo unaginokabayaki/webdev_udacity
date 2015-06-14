@@ -11,6 +11,7 @@ import urllib2
 from xml.dom import minidom
 import logging
 from google.appengine.api import memcache
+from datetime import datetime
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
@@ -180,6 +181,59 @@ def render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
     
+#20150614
+def blog_top(update = False):
+    key = 'blogs'
+    posts = memcache.get(key)
+    if posts is None or update:
+        logging.error("DB QUERY")
+        p = Post.all().ancestor(blog_key()).order('-created')
+        posts = list(p)
+        memcache.set(key, posts)
+
+    return posts
+
+#store the savetime and posts together.
+def age_set(key, val):
+    save_time = datetime.utcnow()
+    memcache.set(key, (val, save_time))
+
+#used in get_posts. retrieve the savetime and compute the elapsed time.
+def age_get(key):
+    r = memcache.get(key)
+    if r:
+        val, save_time = r
+        age = (datetime.utcnow() - save_time).total_seconds()
+    else:
+        val, age = None, 0
+
+    return val, age
+
+#add new post and reload data from database. return the id of new post for permalink.
+def add_post(post):
+    post.put()
+    get_posts(update = True)
+    return str(post.key().id())
+
+def get_posts(update = False):
+    q = Post.all().ancestor(blog_key()).order('-created').fetch(limit = 10)
+    mc_key = 'blogs'
+
+    posts, age = age_get(mc_key)
+    if update or posts is None:
+        posts = list(q)
+        age_set(mc_key, posts)
+
+    return posts, age
+
+def age_str(age):
+    s = 'queried %s seconds ago'
+    age = int(age)
+    if age == 1:
+        s = s.replace('seconds', 'second')
+    return s % age
+
+
 class Post(db.Model):
     subject = db.StringProperty(required = True)
     article = db.TextProperty(required = True)
@@ -192,9 +246,14 @@ class Post(db.Model):
 
 class Blogfront(Handler):
     def render_front(self):
+        r = get_posts()
+        if r:
+            posts, age = r
+
+        #posts = blog_top() #20150614
         #posts = db.GqlQuery("SELECT * FROM Post ORDER BY created DESC")
-        posts = Post.all().ancestor(blog_key()).order('-created')
-        self.render("blog_front.html", posts=posts)
+        #posts = Post.all().ancestor(blog_key()).order('-created')
+        self.render("blog_front.html", posts=posts, age=age_str(age))
 
     def get(self):
         self.render_front()
@@ -214,26 +273,50 @@ class Blogpost(Handler):
         article = self.request.get("article")
 
         if subject and article :
-            data = Post(parent=blog_key(), subject=subject, article=article)
-            data.put()
+            p = Post(parent=blog_key(), subject=subject, article=article)
+
+            id = add_post(p)
+
+            #p.put()
+            #blog_top(True) #20150614
 
             #self.redirect("/blog")
             #time.sleep(1)
-            self.redirect("/blog/%s" % str(data.key().id()))
+            self.redirect("/blog/%s" % id)
+            #self.redirect("/blog/%s" % str(p.key().id()))
         else :
             error = "subject and article are both required."
             self.render_post(error, subject, article)
 
 class Blogperma(Handler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        #20150613
+        post_key = 'POST_' + post_id
+
+        post, age = age_get(post_key)
+        if not post:
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
+            age_set(post_key, post)
+            age = 0
+
+
+        # key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        # post = db.get(key)
 
         if not post:
             self.error(404)
             return 
 
-        self.render("blog_perma.html", post=post)
+        self.render("blog_perma.html", post=post, age=age_str(age))
+        #self.render("blog_perma.html", post=post)
+
+#20150614
+class Blogflush(Handler):
+    def get(self):
+        memcache.delete('blogs')
+        self.redirect('/blog')
+
 
 #Notice, usually not store in the code.
 SECRET = "secret"
@@ -344,7 +427,7 @@ class SignupOnly(Signup):
         if self.username:
             self.render("welcome.html", username = self.username)
         else:
-            self.redirect("/signup")
+            self.redirect("/glog/signup")
 
 class Register(Signup):
     def done(self):
@@ -360,7 +443,7 @@ class Register(Signup):
 
             #set the cookie 'user_id' using User object
             self.login(u)
-            self.redirect("/welcome")
+            self.redirect("/blog/welcome")
 
 class Welcome(Handler):
     def get(self):
@@ -370,7 +453,7 @@ class Welcome(Handler):
         if user:
             self.render("welcome.html", username = user.name)
         else:
-            self.redirect("/signup")
+            self.redirect("/blog/signup")
 
     # def get(self):
     #     self.response.headers['Content-Type'] = 'text/plain'
@@ -395,7 +478,7 @@ class Login(Handler):
         u = User.login(username, password)
         if u :
             self.login(u)
-            self.redirect("/welcome")
+            self.redirect("/blog/welcome")
         else :
             error = "Invalid login"
             self.render_page(error=error)
@@ -410,7 +493,7 @@ class Login(Handler):
 class Logout(Handler):
     def get(self):
         self.logout()
-        self.redirect("/signup")
+        self.redirect("/blog/signup")
         # self.response.headers.add_header("Set-Cookie", "username=%s" % "")
         # self.response.headers.add_header("Set-Cookie", "userid=%s" % "")
         # self.redirect("signup")
@@ -459,10 +542,11 @@ app = webapp2.WSGIApplication([
     ('/blog/?', Blogfront),
     ('/blog/newpost', Blogpost),
     ('/blog/([0-9]+)', Blogperma),
+    ('/blog/flush', Blogflush),
     ('/cookie', CookieHandler),
     ('/signuponly', SignupOnly),    
-    ('/signup', Register),
-    ('/welcome', Welcome),
-    ('/login', Login),
-    ('/logout', Logout),
+    ('/blog/signup', Register),
+    ('/blog/welcome', Welcome),
+    ('/blog/login', Login),
+    ('/blog/logout', Logout),
 ], debug=True)
